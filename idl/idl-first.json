@@ -1,0 +1,103 @@
+{
+  "address": "GXMw4SyGViN1y8d5sSCXchUpefu5GJeqCUnRmiBJATNQ",
+  "metadata": {
+    "name": "pdacansend",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [
+
+    {
+      "name": "sol_transfer",
+      "discriminator": [
+        135,
+        254,
+        247,
+        202,
+        217,
+        48,
+        184,
+        165
+      ],
+      "accounts": [
+        {
+          "name": "pda_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  101,
+                  108,
+                  108,
+                  111,
+                  95,
+                  119,
+                  111,
+                  114,
+                  108,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pda_main"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pda_main",
+          "writable": true
+        },
+        {
+          "name": "recipient",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "CustomAccount",
+      "discriminator": [
+        99,
+        151,
+        198,
+        27,
+        164,
+        9,
+        6,
+        138
+      ]
+    }
+  ],
+  "types": [
+    {
+      "name": "CustomAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bump_seed",
+            "type": "u8"
+          }
+        ]
+      }
+    }
+  ]
+}
