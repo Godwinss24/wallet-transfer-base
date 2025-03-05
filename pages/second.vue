@@ -59,6 +59,12 @@
   
   
   <script lang="ts" setup>
+  import { Buffer } from "buffer";
+
+if (typeof window !== "undefined") {
+  window.Buffer = Buffer; // Only runs on the client
+}
+
   import { clusterApiUrl, Connection, Keypair, PublicKey, Transaction, LAMPORTS_PER_SOL } from "@solana/web3.js";
   import { AnchorProvider, Program, Wallet as AnchorWallet, BN } from '@coral-xyz/anchor';
   import {  PhantomWalletAdapter } from '@solana/wallet-adapter-wallets';
