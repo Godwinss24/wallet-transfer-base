@@ -44,13 +44,15 @@
                         stroke-linecap="round"></circle>
                 </svg>
             </button>
-            <!-- Transaction Success Message -->
-            <div v-if="toastMessage" class="mt-6 p-4 text-gray-100 rounded-lg border shadow-lg" :class="{
-                'bg-red-600/80 border-red-500': toastType === 'error',
-                'bg-green-600/80 border-green-500': toastType !== 'error'
-            }">
-                <p class="text-center font-semibold">{{ toastMessage }}</p>
-            </div>
+              <!-- Transaction Success Message -->
+              <div v-if="toastMessage"
+                    class="mt-6 p-4 text-gray-100 rounded-lg border shadow-lg max-w-full break-words text-center"
+                    :class="{
+                        'bg-red-600/80 border-red-500': toastType === 'error',
+                        'bg-green-600/80 border-green-500': toastType !== 'error'
+                    }">
+                    <p class="font-semibold">{{ toastMessage }}</p>
+                </div>
 
         </div>
 
@@ -233,7 +235,7 @@ const sendsolana = async () => {
         transactionStatus.value = "success";
         transactionSignature.value = signature;
         emit("transaction-confirmed", signature);
-        toastMessage.value = 'Transaction successful!';
+        toastMessage.value = signature;
         toastType.value = 'success';
         // performPostConfirmationAction();
     } catch (error) {
