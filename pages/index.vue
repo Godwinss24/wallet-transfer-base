@@ -31,6 +31,14 @@
         </p>
       </div>
       </NuxtLink>
+    <NuxtLink to="/transfer-token">
+      <div class="mt-6">
+        <h3 class="text-lg font-semibold text-green-300">Send SPL token to PDA and get SOL</h3>
+        <p class="text-gray-400 mt-1">
+          Make sure the sender has the token.
+        </p>
+      </div>
+      </NuxtLink>
     </div>
   </div>
 </template>
