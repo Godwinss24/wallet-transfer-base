@@ -116,13 +116,21 @@ import {
     TrustWalletAdapter,
 
 } from '@solana/wallet-adapter-wallets';
-import { Wallet as AnchorWallet, AnchorProvider, Program, BN } from "@coral-xyz/anchor";
+import { Wallet as AnchorWallet, AnchorProvider, Program } from "@coral-xyz/anchor";
 import * as anchor from "@coral-xyz/anchor";
 import { clusterApiUrl, Connection, Keypair, LAMPORTS_PER_SOL, PublicKey, Transaction } from "@solana/web3.js";
+import { BN } from "@coral-xyz/anchor";
 import { program } from "@coral-xyz/anchor/dist/cjs/native/system";
 import idl from '~/idl/spltoken.json';
 import type { Spltoken } from '~/idl/spltoken';
 import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import bs58 from "bs58";
+import nacl from "tweetnacl";
+
+const isMobile = () => {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+};
+
 
 // Store available wallets
 const availableWallets = ref<WalletAdapter[]>([]);
@@ -132,6 +140,7 @@ const pubKey = ref();
 const isWalletModalOpen = ref(false);
 const solAmount = ref();
 const receiverPublicKey = ref();
+const session = ref();
 
 const toastMessage = ref<undefined | string>('');
 const toastType = ref<'success' | 'error'>('success');
@@ -177,6 +186,51 @@ const createAnchorWallet = (adapter: PhantomWalletAdapter): AnchorWallet => {
 
 const connectwallet = async (wallet: WalletAdapter) => {
     try {
+        if (isMobile()) {
+            // For Phantom mobile
+            if (wallet instanceof PhantomWalletAdapter) {
+                const phantomWindow = window as any;
+                if (phantomWindow.solana?.isPhantom) {
+                    await wallet.connect();
+                } else {
+                    const pubForConnection = nacl.box.keyPair();
+                    localStorage.setItem("wallet", "phantom");
+                    // pubforConnection2.value = pubForConnection.publicKey.toString();
+                    // Store keys in localStorage (use Base58 for correct encoding)
+                    localStorage.setItem("publicKey", bs58.encode(pubForConnection.publicKey));
+                    localStorage.setItem("pubKeyForConnection", bs58.encode(pubForConnection.publicKey));
+                    localStorage.setItem("privateKey", bs58.encode(pubForConnection.secretKey));
+
+                    // Generate the Phantom deep link (encode the public key properly)
+                    const deepLink = `https://phantom.app/ul/v1/connect?app_url=${encodeURIComponent(window.location.origin)}&dapp_encryption_public_key=${encodeURIComponent(bs58.encode(pubForConnection.publicKey))}&redirect_link=${encodeURIComponent("https://wallet-transferr.netlify.app/transfer-token")}&cluster=devnet`;
+                    window.location.href = deepLink;
+
+
+                    return;
+                }
+            }
+            // Add similar checks for other mobile wallets
+            if (wallet instanceof SolflareWalletAdapter) {
+                const solflareWindow = window as any;
+                if (!solflareWindow.solflare?.isSolflare) {
+                    const pubForConnection = nacl.box.keyPair();
+                    localStorage.setItem("wallet", "solflare");
+                    // pubforConnection2.value = pubForConnection.publicKey.toString();
+                    // Store keys in localStorage (use Base58 for correct encoding)
+                    localStorage.setItem("publicKey", bs58.encode(pubForConnection.publicKey));
+                    localStorage.setItem("pubKeyForConnection", bs58.encode(pubForConnection.publicKey));
+                    localStorage.setItem("privateKey", bs58.encode(pubForConnection.secretKey));
+
+                    // Generate the Phantom deep link (encode the public key properly)
+                    const deepLink = `https://solflare.com/ul/v1/connect?app_url=${encodeURIComponent(window.location.origin)}&dapp_encryption_public_key=${encodeURIComponent(bs58.encode(pubForConnection.publicKey))}&redirect_link=${encodeURIComponent("https://wallet-transferr.netlify.app/transfer-token")}&cluster=devnet`;
+                    window.location.href = deepLink;
+
+
+                    return;
+
+                }
+            }
+        }
         selectedWallet.value = wallet;
         await selectedWallet.value.connect();
         pubKey.value = selectedWallet.value.publicKey?.toBase58();
@@ -217,6 +271,105 @@ const disconnect = async () => {
 const trade = async () => {
     try {
         pending.value = true
+        if (isMobile()) {
+
+            const sessionToken = localStorage.getItem("session");
+            if (!sessionToken) {
+                toastMessage.value = "Session not found in localStorage";
+                throw new Error("Session is missing");
+            }
+            // toastSession.value = `Using session: ${sessionToken.slice(0, 10)}...`;
+
+            const connection = new Connection(clusterApiUrl("devnet"));
+            const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+
+            // toastData.value = `Blockhash: ${blockhash.slice(0, 10)}...`;
+
+            // Use a provider without a wallet for an unsigned transaction
+            const provider = new AnchorProvider(connection, {} as any, { preflightCommitment: "confirmed" });
+            const program = new Program(idl as Spltoken, provider);
+
+            const senderPublicKey = new PublicKey(localStorage.getItem("pubKey")!);
+            if(!senderPublicKey){
+                throw new Error("Public key missing");
+                
+            }
+
+            // const recipientPublicKey = new PublicKey("DfgVxYwWWFMm5D9wEQy8FcuUKG9Edeb3JPuz3hsxcyWS");
+            // Create the transaction first
+            const senderAccount = getAssociatedTokenAddressSync(mint_address, senderPublicKey);
+            if(!senderAccount){
+                throw new Error("Sender account missing");
+                
+            }
+            // const receiverTokenAccount = getAssociatedTokenAddressSync(mint_address, new PublicKey(receiverPublicKey.value));
+            const transaction = new Transaction({
+                recentBlockhash: blockhash,
+                feePayer: senderPublicKey, // Phantom wallet user will sign as feePayer
+            });
+            // solAmount.value = new BN(0.1 * LAMPORTS_PER_SOL);
+            // const amount_token = new BN(30000).mul(new BN(10).pow(new BN(9)));
+            const senderAta = getAssociatedTokenAddressSync(mint_address, senderPublicKey);
+            if(!senderAta){
+                throw new Error("Sender ata not found");
+                
+            }
+            // const receiverTokenAccount = getAssociatedTokenAddressSync(mint_address, new PublicKey(receiverPublicKey.value));
+            const [pda] = PublicKey.findProgramAddressSync([Buffer.from("hello_world5"), new PublicKey("38j1tZDtrjrs7P4HZ76Hbbb9s8BmdDHarmBpzDoFRofh").toBuffer()], new PublicKey("DBxiw94c7U99NsrMkvjnVsocbwsjRvAzW1D4yCA1yKS6"));
+            console.log("pda => ", pda.toBase58());
+            const ata = getAssociatedTokenAddressSync(mint_address, pda, true);
+            if(!pda || !ata){
+                throw new Error("Pda or ata missing");
+                
+            }
+            console.log("pda ata => ", ata.toBase58());
+
+            const instruction = await program.methods.transferAndGetSol(new BN(0.1 * LAMPORTS_PER_SOL), new BN(30000).mul(new BN(10).pow(new BN(9)))).accounts({
+                mint: mint_address,
+                pdaAta: ata,
+                senderTokenAccount: senderAta,
+                theKey: new PublicKey("38j1tZDtrjrs7P4HZ76Hbbb9s8BmdDHarmBpzDoFRofh"),
+                sender: senderPublicKey,
+                tokenProgram: TOKEN_PROGRAM_ID,
+                pdaAccount: pda,  // ✅ Added
+                // tokenProgram: TOKEN_PROGRAM_ID,
+                systemProgram: anchor.web3.SystemProgram.programId,  // ✅ Added
+                associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,  // ✅ Added
+            }).instruction();
+            transaction.add(instruction);
+            toastMessage.value = "Transaction prepared";
+            const payload = {
+                session: sessionToken,
+                transaction: bs58.encode(transaction.serialize({ requireAllSignatures: false }))
+            };
+
+            const storedSharedSecret = localStorage.getItem("sharedSecret");
+            if (!storedSharedSecret) {
+                toastMessage.value = "Shared secret missing";
+                throw new Error("Shared secret is undefined");
+            }
+
+            const sharedSecretDapp = bs58.decode(storedSharedSecret);
+            const [nonce, encryptedPayload] = encryptPayload(payload, sharedSecretDapp);
+
+            const dappEncryptionPublicKey = bs58.decode(localStorage.getItem("publicKey")!);
+            const walletType = localStorage.getItem("wallet");
+            let signURL;
+            if (walletType === "phantom") {
+                signURL = `https://phantom.app/ul/v1/signAndSendTransaction?dapp_encryption_public_key=${encodeURIComponent(bs58.encode(dappEncryptionPublicKey))}&nonce=${encodeURIComponent(bs58.encode(nonce))}&redirect_link=${encodeURIComponent("https://wallet-transferr.netlify.app/transfer-token")}&payload=${encodeURIComponent(bs58.encode(encryptedPayload))}`;
+                toastMessage.value = "Redirecting to Phantom for signing...";
+                window.location.href = signURL;
+                return
+            }
+            if (walletType === "solflare") {
+                signURL = `https://solflare.com/ul/v1/signAndSendTransaction?dapp_encryption_public_key=${encodeURIComponent(bs58.encode(dappEncryptionPublicKey))}&nonce=${encodeURIComponent(bs58.encode(nonce))}&redirect_link=${encodeURIComponent("https://wallet-transferr.netlify.app/transfer-token")}&payload=${encodeURIComponent(bs58.encode(encryptedPayload))}`;
+                toastMessage.value = "Redirecting to Phantom for signing...";
+                window.location.href = signURL;
+                return
+            }
+
+            toastMessage.value = "No wallet selected";
+        }
         const program = new Program(idl as Spltoken, provider.value);
         solAmount.value = new BN(0.1 * LAMPORTS_PER_SOL);
         const amount_token = new BN(30000).mul(new BN(10).pow(new BN(9)));
@@ -226,7 +379,7 @@ const trade = async () => {
         console.log("pda => ", pda.toBase58());
         const ata = getAssociatedTokenAddressSync(mint_address, pda, true);
         console.log("pda ata => ", ata.toBase58());
-        const signature = await program.methods.transferAndGetSol(solAmount.value, amount_token).accounts({
+        const signature = await program.methods.transferAndGetSol(new BN(0.1 * LAMPORTS_PER_SOL), new BN(30000).mul(new BN(10).pow(new BN(9)))).accounts({
             mint: mint_address,
             pdaAta: ata,
             senderTokenAccount: senderAta,
@@ -241,13 +394,167 @@ const trade = async () => {
         toastMessage.value = signature;
         toastType.value = "success"
         console.log("signature => ", signature);
-    } catch (error) {
+    } catch (error:any) {
+        
+        toastMessage.value = error;
         console.error('Error while trading:', error);
+        
     }
     finally {
         pending.value = false
     }
 }
+const handleRedirection = async () => {
+    try {
+        const walletType = localStorage.getItem("wallet");
+        let phantomKey
+        const urlParams = new URLSearchParams(window.location.search);
+        if (walletType === "phantom") {
+            phantomKey = urlParams.get("phantom_encryption_public_key");
+        }
+
+        if (walletType === "solflare") {
+            phantomKey = urlParams.get("solflare_encryption_public_key");
+        }
+
+        const nonce = urlParams.get("nonce");
+        const data = urlParams.get("data");
+        if (urlParams.has("errorCode")) {
+            const errorCode = urlParams.get("errorCode");
+            const errorMessage = urlParams.get("errorMessage");
+            toastMessage.value = `Transaction rejected: ${errorCode} - ${errorMessage}`;
+            console.error(`Error: ${errorCode} - ${errorMessage}`);
+            return;
+        }
+
+        if (!nonce || !data) {
+            throw new Error("Missing nonce or data in the URL parameters.");
+        }
+
+        const dappSecretBase58 = localStorage.getItem("privateKey");
+        if (!dappSecretBase58) {
+            throw new Error("Dapp private key is missing from local storage.");
+        }
+
+        const dappSecret = bs58.decode(dappSecretBase58);
+        let sharedSecretDapp: Uint8Array | null = null;
+
+        if (phantomKey) {
+            // This is the connection flow
+            sharedSecretDapp = nacl.box.before(bs58.decode(phantomKey), dappSecret);
+            if (!sharedSecretDapp) {
+                throw new Error("Failed to generate shared secret.");
+            }
+
+            localStorage.setItem("sharedSecret", bs58.encode(sharedSecretDapp));
+        } else {
+            // This is the transaction flow
+            const storedSharedSecret = localStorage.getItem("sharedSecret");
+            if (!storedSharedSecret) {
+                throw new Error("Shared secret missing from local storage.");
+            }
+            sharedSecretDapp = bs58.decode(storedSharedSecret);
+        }
+
+        // Attempt to decrypt the payload
+        const connectData = decryptPayLoad(data, nonce, sharedSecretDapp);
+
+        if (!connectData) {
+            throw new Error("Decryption failed, connectData is null.");
+        }
+        localStorage.setItem("session", connectData.session);
+        // toastData.value = localStorage.getItem("session");
+
+
+        // If this is the connection flow, store public key and session
+        if (phantomKey) {
+            pubKey.value = connectData.public_key;
+            userbalance.value = await connection.getBalance(new PublicKey(pubKey.value)) / LAMPORTS_PER_SOL;
+            session.value = connectData.session;
+            localStorage.setItem("pubKey", connectData.public_key);
+        } else {
+            // Transaction flow: Validate transaction signature
+            if (!connectData.signature) {
+                throw new Error("Invalid transaction signature.");
+            }
+            toastMessage.value = `Transaction signature: ${connectData.signature}`;
+        }
+    } catch (error) {
+        toastMessage.value = `Error in handleRedirection: ${error}`;
+    }
+};
+const decryptPayLoad = (data: string, nonce: string, sharedSecret?: Uint8Array) => {
+    try {
+        if (!sharedSecret) {
+            toastMessage.value = "share secret missing"
+            throw new Error("Missing shared secret");
+
+        }
+        const decryptedData = nacl.box.open.after(bs58.decode(data), bs58.decode(nonce), sharedSecret)
+        if (!decryptedData) {
+            toastMessage.value = "could not decrypt data"
+            throw new Error("Unable to decrypt data");
+        }
+        const testingData = JSON.parse(Buffer.from(decryptedData).toString("utf8"));
+        // toastSession.value = ` ${testingData.session}`;
+        // toastData.value = `public key => ${testingData.public_key}`;
+        return JSON.parse(Buffer.from(decryptedData).toString("utf8"));
+    } catch (error) {
+        toastMessage.value = `Error while decrypting ${error}`
+    }
+}
+const encryptPayload = (payload: any, sharedSecret?: Uint8Array) => {
+    if (!sharedSecret) throw new Error("missing shared secret");
+
+    const nonce = nacl.randomBytes(24);
+    localStorage.setItem("nonce", bs58.encode(nonce));
+
+    const encryptedPayload = nacl.box.after(
+        Buffer.from(JSON.stringify(payload)),
+        nonce,
+        sharedSecret
+    );
+    if (!encryptPayload) {
+        toastMessage.value = `From encrypt function`
+    }
+    return [nonce, encryptedPayload];
+}
+
+// Enhanced wallet detection
+const detectWallets = async () => {
+    const wallets: WalletAdapter[] = [];
+    const phantom = new PhantomWalletAdapter();
+    const solflare = new SolflareWalletAdapter();
+
+    const solWindow = window as any;
+
+    // Wait for wallets to load (some take a moment to inject)
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // Check for Phantom
+    if (solWindow.solana?.isPhantom) {
+        console.log("Phantom detected!");
+        wallets.push(phantom);
+    }
+
+    // Check for Solflare
+    if (solWindow.solflare?.isSolflare) {
+        console.log("Solflare detected!");
+        wallets.push(solflare);
+    }
+
+    // Fallback: Add wallets even if not detected, for manual connection
+    if (wallets.length === 0) {
+        console.log("No wallets detected in browser. Adding defaults for manual connection.");
+        wallets.push(phantom, solflare);
+    }
+
+    // Event listeners for dynamic updates
+    phantom.on('connect', () => console.log("Phantom connected!"));
+    phantom.on('disconnect', () => console.log("Phantom disconnected!"));
+
+    availableWallets.value = wallets;
+};
 
 // Detect installed wallets on mount
 onMounted(() => {
@@ -257,9 +564,22 @@ onMounted(() => {
         new TorusWalletAdapter(),
         new LedgerWalletAdapter(),
         // new TrustWalletAdapter()
-    ]
+    ].filter(wallet => wallet.readyState === 'Installed'); // Only show installed wallets
 
     availableWallets.value = wallets;
+    if (isMobile()) {
+        if (typeof window !== "undefined") {
+            window.Buffer = Buffer;
+            detectWallets();
+
+            // Add window event listener for wallet connections
+            window.addEventListener('load', detectWallets);
+            if (window.location.search) {
+                handleRedirection()
+            }
+        }
+    }
+
 });
 </script>
 

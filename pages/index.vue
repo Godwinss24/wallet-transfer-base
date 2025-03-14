@@ -16,9 +16,17 @@
     </NuxtLink>
     <NuxtLink to="/token">
       <div class="mt-6">
-        <h3 class="text-lg font-semibold text-green-300">Buy SPL token</h3>
+        <h3 class="text-lg font-semibold text-green-300">Buy SPL token(Minted)</h3>
         <p class="text-gray-400 mt-1">
-          Send SOL and get back some SPL tokens. Note: If you open your wallet and can't find the token, check your wallet explorer.
+          Send SOL and some spl token is minted to your account. Note: If you open your wallet and can't find the token, check your wallet explorer.
+        </p>
+      </div>
+    </NuxtLink>
+    <NuxtLink to="/transfer">
+      <div class="mt-6">
+        <h3 class="text-lg font-semibold text-green-300">Buy SPL token(From PDA)</h3>
+        <p class="text-gray-400 mt-1">
+          Send SOL and get some spl token from the PDA. Note: If you open your wallet and can't find the token, check your wallet explorer.
         </p>
       </div>
     </NuxtLink>

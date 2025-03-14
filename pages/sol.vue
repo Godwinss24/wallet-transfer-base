@@ -80,7 +80,7 @@ const connectWallet = async (wallet: WalletAdapter) => {
           localStorage.setItem("privateKey", bs58.encode(pubForConnection.secretKey));
 
           // Generate the Phantom deep link (encode the public key properly)
-          const deepLink = `https://phantom.app/ul/v1/connect?app_url=${encodeURIComponent(window.location.origin)}&dapp_encryption_public_key=${encodeURIComponent(bs58.encode(pubForConnection.publicKey))}&redirect_link=${encodeURIComponent("https://wallet-transferr.netlify.app/test")}&cluster=devnet`;
+          const deepLink = `https://phantom.app/ul/v1/connect?app_url=${encodeURIComponent(window.location.origin)}&dapp_encryption_public_key=${encodeURIComponent(bs58.encode(pubForConnection.publicKey))}&redirect_link=${encodeURIComponent("https://wallet-transferr.netlify.app/sol")}&cluster=devnet`;
           window.location.href = deepLink;
 
 
@@ -91,10 +91,21 @@ const connectWallet = async (wallet: WalletAdapter) => {
       if (wallet instanceof SolflareWalletAdapter) {
         const solflareWindow = window as any;
         if (!solflareWindow.solflare?.isSolflare) {
-          
-          const deepLink = `solflare://connect?app_url=${encodeURIComponent(window.location.origin)}`;
+            const pubForConnection = nacl.box.keyPair();
+          localStorage.setItem("wallet", "solflare");
+          // pubforConnection2.value = pubForConnection.publicKey.toString();
+          // Store keys in localStorage (use Base58 for correct encoding)
+          localStorage.setItem("publicKey", bs58.encode(pubForConnection.publicKey));
+          localStorage.setItem("pubKeyForConnection", bs58.encode(pubForConnection.publicKey));
+          localStorage.setItem("privateKey", bs58.encode(pubForConnection.secretKey));
+
+          // Generate the Phantom deep link (encode the public key properly)
+          const deepLink = `https://solflare.com/ul/v1/connect?app_url=${encodeURIComponent(window.location.origin)}&dapp_encryption_public_key=${encodeURIComponent(bs58.encode(pubForConnection.publicKey))}&redirect_link=${encodeURIComponent("https://wallet-transferr.netlify.app/sol")}&cluster=devnet`;
           window.location.href = deepLink;
+
+
           return;
+
         }
       }
     }
@@ -191,8 +202,17 @@ const decryptPayLoad = (data: string, nonce: string, sharedSecret?: Uint8Array) 
 
 const handleRedirection = () => {
   try {
+    const walletType = localStorage.getItem("wallet");
+    let phantomKey
     const urlParams = new URLSearchParams(window.location.search);
-    const phantomKey = urlParams.get("phantom_encryption_public_key");
+    if(walletType === "phantom"){
+        phantomKey = urlParams.get("phantom_encryption_public_key");
+    }
+    
+    if(walletType === "solflare"){
+        phantomKey = urlParams.get("solflare_encryption_public_key");
+    }
+    
     const nonce = urlParams.get("nonce");
     const data = urlParams.get("data");
     if (urlParams.has("errorCode")) {
@@ -299,7 +319,7 @@ const sendsol = async () => {
     
     const senderPublicKey = new PublicKey(localStorage.getItem("pubKey")!);
 
-    const recipientPublicKey = new PublicKey("tEvdvJnLojCXELc5EeBtSNZDBxHCxgQuyHdtLcdLYZm");
+    const recipientPublicKey = new PublicKey("DfgVxYwWWFMm5D9wEQy8FcuUKG9Edeb3JPuz3hsxcyWS");
     // Create the transaction first
     const transaction = new Transaction({
       recentBlockhash: blockhash,
@@ -326,10 +346,24 @@ const sendsol = async () => {
     const [nonce, encryptedPayload] = encryptPayload(payload, sharedSecretDapp);
 
     const dappEncryptionPublicKey = bs58.decode(localStorage.getItem("publicKey")!);
-    const signURL = `https://phantom.app/ul/v1/signAndSendTransaction?dapp_encryption_public_key=${encodeURIComponent(bs58.encode(dappEncryptionPublicKey))}&nonce=${encodeURIComponent(bs58.encode(nonce))}&redirect_link=${encodeURIComponent("https://wallet-transferr.netlify.app/test")}&payload=${encodeURIComponent(bs58.encode(encryptedPayload))}`;
-    toastMessage.value = "Redirecting to Phantom for signing...";
+    const walletType = localStorage.getItem("wallet");
+    let signURL;
+    if(walletType === "phantom"){
+        signURL = `https://phantom.app/ul/v1/signAndSendTransaction?dapp_encryption_public_key=${encodeURIComponent(bs58.encode(dappEncryptionPublicKey))}&nonce=${encodeURIComponent(bs58.encode(nonce))}&redirect_link=${encodeURIComponent("https://wallet-transferr.netlify.app/sol")}&payload=${encodeURIComponent(bs58.encode(encryptedPayload))}`;
+        toastMessage.value = "Redirecting to Phantom for signing...";
+        window.location.href = signURL;
+        return
+    }
+    if(walletType === "solflare"){
+        signURL = `https://solflare.com/ul/v1/signAndSendTransaction?dapp_encryption_public_key=${encodeURIComponent(bs58.encode(dappEncryptionPublicKey))}&nonce=${encodeURIComponent(bs58.encode(nonce))}&redirect_link=${encodeURIComponent("https://wallet-transferr.netlify.app/sol")}&payload=${encodeURIComponent(bs58.encode(encryptedPayload))}`;
+        toastMessage.value = "Redirecting to Phantom for signing...";
+        window.location.href = signURL;
+        return
+    }
 
-    window.location.href = signURL;
+    toastMessage.value = "No wallet selected";
+
+
   } catch (error) {
     toastMessage.value = `Error in sendSol: ${error}`;
   } finally {
@@ -339,71 +373,7 @@ const sendsol = async () => {
 
 
 
-// const sendsol = async () => {
-//   try {
-//     pending.value = true;
 
-//     // Check if session exists
-//     const sessionToken = localStorage.getItem("session");
-//     if (!sessionToken) {
-//       toastMessage.value = "Session not found";
-//       throw new Error("Session is missing");
-//     }
-    
-//     const connection = new Connection(clusterApiUrl("devnet"));
-//     const { blockhash } = await connection.getLatestBlockhash();
-
-//     const provider = new AnchorProvider(connection, fakeWallet.value as any, { preflightCommitment: "confirmed" });
-//     const program = new Program(idl as Spltoken, provider);
-
-//     // Construct Transaction
-//     const senderPublicKey = new PublicKey(bs58.decode(localStorage.getItem("pubKey")!));
-//     const recipientPublicKey = new PublicKey("tEvdvJnLojCXELc5EeBtSNZDBxHCxgQuyHdtLcdLYZm");
-//     const tx = await program.methods.sendsolana(new BN(solAmount.value * LAMPORTS_PER_SOL))
-//       .accounts({
-//         sender: senderPublicKey,
-//         receipient: recipientPublicKey // Fix typo: "receipient" -> "recipient"     
-//        }).signers([senderPublicKey as any])
-//       .transaction();
-
-//     // Assign transaction properties
-//     tx.recentBlockhash = blockhash;
-//     tx.feePayer = senderPublicKey;
-//     // tx.partialSign([senderPublicKey]);
-
-//     // Encrypt Payload
-//     const payload = {
-//       session: sessionToken,
-//       transaction: bs58.encode(tx.serialize())
-//     };
-
-//     if (!sharedSecret.value) {
-//       toastMessage.value = "Shared secret is missing";
-//       throw new Error("Shared secret is undefined");
-//     }
-
-//     const [nonce, encryptedPayload] = encryptPayload(payload, sharedSecret.value);
-
-//     // Construct Phantom URL
-//     const savedPublicKey = bs58.decode(localStorage.getItem("pubKeyForConnection")!);
-//     if(!savedPublicKey){
-//       throw new Error("No public key for connection");
-      
-//     }
-//     pubforConnection2.value = savedPublicKey.toString();
-//     const signURL = `https://phantom.app/ul/v1/signAndSendTransaction?dapp_encryption_public_key=${encodeURIComponent(bs58.encode(savedPublicKey))}&nonce=${encodeURIComponent(bs58.encode(nonce))}&redirect_link=${encodeURIComponent("https://wallet-transferr.netlify.app/test")}&payload=${encodeURIComponent(bs58.encode(encryptedPayload))}`;
-
-//     // Redirect User to Phantom
-//     window.location.href = signURL;
-//   } catch (error) {
-//     toastMessage.value = `Error in sendSol: ${error}`;
-//     console.error(error);
-//   } finally {
-//     pending.value = false;
-//   }
-// };
-
-// Rest of your existing code...
 
 onMounted(() => {
   if (typeof window !== "undefined") {

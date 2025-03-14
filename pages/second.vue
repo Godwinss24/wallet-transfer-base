@@ -66,8 +66,8 @@ if (typeof window !== "undefined") {
 import { clusterApiUrl, Connection, Keypair, PublicKey, Transaction, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { AnchorProvider, Program, Wallet as AnchorWallet, BN } from '@coral-xyz/anchor';
 import { PhantomWalletAdapter } from '@solana/wallet-adapter-wallets';
-import idl from '../idl/idl-first.json';
-import type { Pdacansend } from "../idl/send-type";
+import idl from '../idl/spltoken.json';
+import type { Spltoken } from "../idl/spltoken";
 
 interface myAnchorWallet extends AnchorWallet {
   publicKey: PublicKey;
@@ -84,7 +84,7 @@ const provider = ref<AnchorProvider | null>(null);
 
 const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
 const programID = new PublicKey("GXMw4SyGViN1y8d5sSCXchUpefu5GJeqCUnRmiBJATNQ");
-const pdaKey = new PublicKey("FLoiCNi3yCcek2E8E8TekLi6QhT3dRJCsAked2XLc4Bp");
+const pdaKey = new PublicKey("38j1tZDtrjrs7P4HZ76Hbbb9s8BmdDHarmBpzDoFRofh");
 const amount = ref();
 const pending = ref(false);
 
@@ -170,10 +170,9 @@ const sendMoney = async () => {
     pending.value = true;
     if (!provider.value) throw new Error("Provider not initialized");
 
-    const program = new Program(idl as Pdacansend, provider.value);
+    const program = new Program(idl as Spltoken, provider.value);
 
-    const [pda] = PublicKey.findProgramAddressSync([Buffer.from("hello_world"), pdaKey.toBuffer()],
-      program.programId);
+    const [pda] = PublicKey.findProgramAddressSync([Buffer.from("hello_world5"), new PublicKey("38j1tZDtrjrs7P4HZ76Hbbb9s8BmdDHarmBpzDoFRofh").toBuffer()], program.programId);
 
     console.log("pda address => ", pda.toBase58());
 

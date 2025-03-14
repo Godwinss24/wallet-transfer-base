@@ -1,6 +1,6 @@
 <template>
   <div>
-    <SendFunds network="devnet" :receiver="receiver" :sol-amount="0.005"/>
+    <SendFunds />
   </div>
 </template>
 

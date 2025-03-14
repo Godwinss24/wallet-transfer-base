@@ -168,6 +168,103 @@ export type Spltoken = {
       ]
     },
     {
+      "name": "sendsolana",
+      "discriminator": [
+        2,
+        223,
+        49,
+        157,
+        187,
+        112,
+        31,
+        40
+      ],
+      "accounts": [
+        {
+          "name": "sender",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "receipient",
+          "writable": true
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "solTransfer",
+      "discriminator": [
+        135,
+        254,
+        247,
+        202,
+        217,
+        48,
+        184,
+        165
+      ],
+      "accounts": [
+        {
+          "name": "pdaAccount",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  101,
+                  108,
+                  108,
+                  111,
+                  95,
+                  119,
+                  111,
+                  114,
+                  108,
+                  100,
+                  53
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pdaMain"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pdaMain",
+          "writable": true
+        },
+        {
+          "name": "recipient",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "transferAndGetSol",
       "discriminator": [
         11,
@@ -339,6 +436,145 @@ export type Spltoken = {
         },
         {
           "name": "receiver",
+          "writable": true
+        },
+        {
+          "name": "associatedTokenProgram",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "tokenProgram"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "tokenAmount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "transferSolAndGetTokenFromPda",
+      "discriminator": [
+        224,
+        142,
+        196,
+        213,
+        16,
+        198,
+        155,
+        8
+      ],
+      "accounts": [
+        {
+          "name": "sender",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "mint",
+          "writable": true
+        },
+        {
+          "name": "senderTokenAccount",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "sender"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "theKey",
+          "writable": true
+        },
+        {
+          "name": "pdaAccount",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  101,
+                  108,
+                  108,
+                  111,
+                  95,
+                  119,
+                  111,
+                  114,
+                  108,
+                  100,
+                  53
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "theKey"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pdaAta",
           "writable": true
         },
         {
